@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Pilot: -ED Mission</title>
+    <!-- Tailwind CSS for modern responsive layout and styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            background-color: #030310;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 860px;
+            background: linear-gradient(135deg, #070722 0%, #160738 100%);
+            border: 4px solid #00f0ff;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.4), inset 0 0 20px rgba(0, 240, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Glowing neon utilities */
+        .neon-text-cyan {
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.8), 0 0 20px rgba(0, 240, 255, 0.4);
+        }
+        .neon-text-pink {
+            color: #ff007f;
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.8), 0 0 20px rgba(255, 0, 127, 0.4);
+        }
+        .neon-text-yellow {
+            color: #ffff00;
+            text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+        }
+        .neon-box-cyan {
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+        .neon-btn {
+            background: linear-gradient(90deg, #ff007f, #7f00ff);
+            color: white;
+            border: 2px solid #00f0ff;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.6);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .neon-btn:active {
+            transform: scale(0.96);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- TOP HEADER HUD -->
+        <header class="bg-black/70 border-b-2 border-[#ff007f] px-4 py-3 flex justify-between items-center z-10">
+            <div>
+                <h1 class="text-xl font-bold tracking-widest neon-text-cyan m-0">SPACE PILOT</h1>
+                <div class="text-xs text-yellow-300 tracking-wider" id="hud-score">SCORE: 0</div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs neon-text-yellow tracking-wider" id="hud-time">TIME: 00:00</div>
+                <div class="text-xs text-gray-300" id="hud-streak">STREAK: 0🔥</div>
+            </div>
+        </header>
+
+        <!-- MAIN VIEW CONTAINER -->
+        <div class="flex-1 flex flex-col p-4 justify-between relative overflow-y-auto">
+            
+            <!-- SCREEN 1: START MENU -->
+            <div id="screen-start" class="screen flex flex-col h-full items-center justify-between text-center py-4">
+                <div>
+                    <canvas id="vector-preview" width="160" height="110" class="mx-auto mb-3"></canvas>
+                    <h2 class="text-xl font-bold neon-text-cyan tracking-wider mb-2">-ED VERB SECTOR</h2>
+                    <p class="text-xs text-gray-300 mb-2">Practice all 15 past-tense action words from cadet training:</p>
+                </div>
+
+                <div class="w-full bg-black/40 border border-[#00f0ff]/40 p-3 rounded-xl text-xs text-left max-h-[220px] overflow-y-auto">
+                    <div class="text-[#00f0ff] font-bold mb-1 text-center">MISSION WORD BANK (15 Words):</div>
+                    <div id="word-preview-list" class="text-gray-300 text-center leading-relaxed font-sans">
+                        yelled, shivered, peered, screamed, chuckled, waited, wanted, decided, reported, collided, picked, bounced, asked, watched, noticed
+                    </div>
+                </div>
+
+                <div class="w-full mt-4">
+                    <button class="neon-btn w-full py-3.5 text-base uppercase tracking-widest" onclick="startGame()">
+                        🚀 LAUNCH MISSION
+                    </button>
+                </div>
+            </div>
+
+            <!-- SCREEN 2: GAMEPLAY -->
+            <div id="screen-game" class="screen hidden flex flex-col h-full justify-between items-center text-center py-1">
+                <div class="w-full flex justify-between items-center text-xs px-1">
+                    <span class="neon-text-cyan font-bold" id="mission-counter">WORD 1 / 15</span>
+                    <button class="bg-[#1a0b36] border border-[#00f0ff] text-[#00f0ff] px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-[0_0_8px_rgba(0,240,255,0.4)]" onclick="toggleSlowSpeed()" id="slow-speed-btn">
+                        🐢 SLOW: OFF
+                    </button>
+                </div>
+
+                <!-- Vector arcade graphic canvas -->
+                <canvas id="vector-canvas" width="150" height="100" class="my-1"></canvas>
+                
+                <!-- Hear Word Button -->
+                <button class="bg-[#00f0ff] text-[#050515] font-bold px-5 py-2.5 rounded-full text-sm flex items-center gap-2 shadow-[0_0_15px_rgba(0,240,255,0.7)] hover:scale-105 transition-transform" onclick="speakCurrentWord()">
+                    🔊 HEAR WORD
+                </button>
+
+                <!-- Letter Slots Container -->
+                <div class="flex gap-2 min-h-[50px] justify-center items-center my-2 flex-wrap" id="slot-container">
+                    <!-- Letter slots go here -->
+                </div>
+
+                <!-- Feedback Message -->
+                <div class="text-sm font-bold min-h-[24px] tracking-wide" id="feedback-msg"></div>
+
+                <!-- Exact-Letter Tile Bank -->
+                <div class="w-full bg-black/40 border border-indigo-900/60 p-3 rounded-xl flex gap-2 flex-wrap justify-center min-h-[70px] items-center mb-2" id="tile-bank">
+                    <!-- Scrambled exact-letter tiles go here -->
+                </div>
+
+                <!-- Abort Button -->
+                <button class="neon-btn px-4 py-1.5 text-xs uppercase tracking-wider text-pink-400 border-pink-500 bg-black/50" onclick="returnToMenu()">
+                    ABORT MISSION
+                </button>
+            </div>
+
+            <!-- SCREEN 3: MISSION COMPLETE -->
+            <div id="screen-complete" class="screen hidden flex flex-col h-full justify-center items-center text-center py-4">
+                <div class="text-4xl mb-2">🌟🏆🌟</div>
+                <h2 class="text-2xl font-bold neon-text-cyan tracking-widest mb-3">MISSION ACCOMPLISHED!</h2>
+                
+                <div class="bg-black/50 border border-[#00f0ff]/50 p-4 rounded-xl w-full max-w-xs mb-6 text-sm space-y-2 shadow-[0_0_15px_rgba(0,240,255,0.2)]" id="complete-stats">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <div class="space-y-3 w-full max-w-xs">
+                    <button class="neon-btn w-full py-3 text-sm uppercase tracking-wider" onclick="startGame()">
+                        🔄 REPLAY MISSION
+                    </button>
+                    <button class="bg-black/60 border border-gray-600 text-gray-300 font-bold py-2.5 w-full rounded-lg text-sm uppercase tracking-wider" onclick="returnToMenu()">
+                        MAIN MENU
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // The Single -ED Word List (Exactly 15 words)
+        const edWordList = [
+            "yelled", "shivered", "peered", "screamed", "chuckled", 
+            "waited", "wanted", "decided", "reported", "collided", 
+            "picked", "bounced", "asked", "watched", "noticed"
+        ];
+
+        let currentWordIndex = 0;
+        let currentListWords = [];
+        let targetWord = "";
+        let currentSpelling = [];
+        let availableTiles = [];
+        
+        let score = 0;
+        let streak = 0;
+        let timerInterval = null;
+        let elapsedSeconds = 0;
+        let mistakesCount = 0;
+        let isSlowSpeed = false;
+
+        // Web Audio API Sound Effects Generator
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            initAudio();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'tap') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.06);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.06);
+                osc.start(now);
+                osc.stop(now + 0.06);
+            } else if (type === 'success') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.setValueAtTime(110, now + 0.15);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        // Crisp Vector Arcade Graphics (Canvas Animation)
+        function drawVectorArt(canvasId, frame) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+
+            // Glowing Starfield Grid
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillRect(-70 + ((frame * 1.5) % 140), -45, 2, 2);
+            ctx.fillRect(40 - ((frame * 1.0) % 80), 30, 2, 2);
+            ctx.fillRect(10 + ((frame * 0.8) % 100), -30, 1.5, 1.5);
+
+            // Vector Spaceship
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 10;
+
+            ctx.beginPath();
+            ctx.moveTo(0, -32); // Nose
+            ctx.lineTo(14, 14);  // Right wing
+            ctx.lineTo(4, 8);    // Right engine recess
+            ctx.lineTo(0, 16);   // Tail center
+            ctx.lineTo(-4, 8);   // Left engine recess
+            ctx.lineTo(-14, 14); // Left wing
+            ctx.closePath();
+            ctx.stroke();
+
+            // Cockpit Canopy Glow
+            ctx.strokeStyle = '#ff007f';
+            ctx.beginPath();
+            ctx.arc(0, -6, 4.5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Animated Thruster Exhaust Flame
+            ctx.strokeStyle = '#ffff00';
+            ctx.beginPath();
+            const flameLen = 8 + Math.sin(frame * 0.5) * 5;
+            ctx.moveTo(-4, 16);
+            ctx.lineTo(0, 16 + flameLen);
+            ctx.lineTo(4, 16);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        let animFrame = 0;
+        function globalAnimLoop() {
+            animFrame++;
+            drawVectorArt('vector-preview', animFrame);
+            drawVectorArt('vector-canvas', animFrame);
+            requestAnimationFrame(globalAnimLoop);
+        }
+
+        // Web Speech API - Targeting Samantha / North American Female Voice
+        let cachedVoice = null;
+        function getSamanthaVoice() {
+            if (cachedVoice) return cachedVoice;
+            const voices = window.speechSynthesis.getVoices();
+            cachedVoice = voices.find(v => v.name.includes('Samantha') || (v.lang.includes('en-US') && v.name.toLowerCase().includes('female'))) ||
+                          voices.find(v => v.lang.includes('en-US')) ||
+                          voices[0];
+            return cachedVoice;
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = getSamanthaVoice;
+        }
+
+        function speakCurrentWord() {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            
+            const cleanWord = targetWord.trim();
+            const utterance = new SpeechSynthesisUtterance(cleanWord);
+            const voice = getSamanthaVoice();
+            if (voice) utterance.voice = voice;
+            
+            utterance.rate = isSlowSpeed ? 0.65 : 0.9;
+            utterance.pitch = 1.0;
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleSlowSpeed() {
+            isSlowSpeed = !isSlowSpeed;
+            const btn = document.getElementById('slow-speed-btn');
+            if (isSlowSpeed) {
+                btn.className = "bg-[#ff007f] text-white border border-[#00f0ff] px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-[0_0_12px_rgba(255,0,127,0.7)]";
+                btn.innerText = "🐢 SLOW: ON";
+            } else {
+                btn.className = "bg-[#1a0b36] border border-[#00f0ff] text-[#00f0ff] px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-[0_0_8px_rgba(0,240,255,0.4)]";
+                btn.innerText = "🐢 SLOW: OFF";
+            }
+        }
+
+        // Screen Navigation & Game Flow
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function startGame() {
+            currentListWords = [...edWordList];
+            currentListWords.sort(() => Math.random() - 0.5); // Shuffle for variety
+            currentWordIndex = 0;
+            score = 0;
+            streak = 0;
+            mistakesCount = 0;
+            elapsedSeconds = 0;
+            
+            updateHUD();
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+                const secs = String(elapsedSeconds % 60).padStart(2, '0');
+                document.getElementById('hud-time').innerText = `TIME: ${mins}:${secs}`;
+            }, 1000);
+
+            switchScreen('screen-game');
+            loadWord();
+        }
+
+        function returnToMenu() {
+            if (timerInterval) clearInterval(timerInterval);
+            switchScreen('screen-start');
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-score').innerText = `SCORE: ${score}`;
+            document.getElementById('hud-streak').innerText = `STREAK: ${streak}🔥`;
+        }
+
+        function loadWord() {
+            if (currentWordIndex >= currentListWords.length) {
+                endMission();
+                return;
+            }
+
+            targetWord = currentListWords[currentWordIndex];
+            currentSpelling = new Array(targetWord.length).fill(null);
+            
+            document.getElementById('mission-counter').innerText = `WORD ${currentWordIndex + 1} / ${currentListWords.length}`;
+            document.getElementById('feedback-msg').innerText = "";
+
+            // Create exact-letter-only tiles (zero decoy letters)
+            const letters = targetWord.split('');
+            letters.sort(() => Math.random() - 0.5); // Scramble
+            availableTiles = letters.map((char, i) => ({ id: i, char: char, used: false }));
+
+            renderBoard();
+            
+            setTimeout(() => speakCurrentWord(), 350);
+        }
+
+        function renderBoard() {
+            // Render slots
+            const slotContainer = document.getElementById('slot-container');
+            slotContainer.innerHTML = '';
+            targetWord.split('').forEach((_, idx) => {
+                const slot = document.createElement('div');
+                const filled = currentSpelling[idx] !== null;
+                slot.className = `w-9 h-11 sm:w-10 sm:h-12 border-2 ${filled ? 'border-solid bg-[#00f0ff]/20 neon-box-cyan' : 'border-dashed border-[#00f0ff]/60 bg-[#00f0ff]/5'} flex justify-center items-center text-lg sm:text-xl font-bold text-[#00f0ff] rounded-md cursor-pointer transition-all`;
+                slot.innerText = filled ? currentSpelling[idx].char : '';
+                
+                slot.onclick = () => {
+                    if (currentSpelling[idx]) {
+                        playSound('tap');
+                        const tileObj = currentSpelling[idx];
+                        tileObj.used = false;
+                        currentSpelling[idx] = null;
+                        renderBoard();
+                    }
+                };
+                slotContainer.appendChild(slot);
+            });
+
+            // Render tile bank
+            const bank = document.getElementById('tile-bank');
+            bank.innerHTML = '';
+            availableTiles.forEach(tile => {
+                const tileEl = document.createElement('div');
+                tileEl.className = `w-10 h-11 sm:w-11 sm:h-12 bg-gradient-to-br from-[#7f00ff] to-[#ff007f] border-2 border-yellow-300 text-white text-lg sm:text-xl font-bold flex justify-center items-center rounded-md cursor-pointer shadow-[0_4px_10px_rgba(0,0,0,0.4)] transition-all ${tile.used ? 'opacity-20 pointer-events-none scale-90' : 'hover:scale-105'}`;
+                tileEl.innerText = tile.char;
+                
+                tileEl.onclick = () => {
+                    if (!tile.used) {
+                        playSound('tap');
+                        const emptyIdx = currentSpelling.findIndex(s => s === null);
+                        if (emptyIdx !== -1) {
+                            tile.used = true;
+                            currentSpelling[emptyIdx] = tile;
+                            renderBoard();
+                            checkWordCompletion();
+                        }
+                    }
+                };
+                bank.appendChild(tileEl);
+            });
+        }
+
+        function checkWordCompletion() {
+            if (currentSpelling.every(s => s !== null)) {
+                const formedWord = currentSpelling.map(s => s.char).join('');
+                if (formedWord === targetWord) {
+                    playSound('success');
+                    score += 100 + (streak * 10);
+                    streak++;
+                    updateHUD();
+
+                    const msg = document.getElementById('feedback-msg');
+                    msg.className = "text-sm font-bold min-h-[24px] neon-text-cyan";
+                    msg.innerText = "🌟 CORRECT! WARP SPEED! 🌟";
+                    
+                    setTimeout(() => {
+                        currentWordIndex++;
+                        loadWord();
+                    }, 1000);
+                } else {
+                    playSound('error');
+                    mistakesCount++;
+                    streak = 0;
+                    updateHUD();
+
+                    const msg = document.getElementById('feedback-msg');
+                    msg.className = "text-sm font-bold min-h-[24px] neon-text-pink";
+                    msg.innerText = "❌ NOT QUITE. RETRY!";
+                    
+                    setTimeout(() => {
+                        availableTiles.forEach(t => t.used = false);
+                        currentSpelling = new Array(targetWord.length).fill(null);
+                        renderBoard();
+                        msg.innerText = "";
+                    }, 850);
+                }
+            }
+        }
+
+        function endMission() {
+            if (timerInterval) clearInterval(timerInterval);
+            switchScreen('screen-complete');
+            
+            const mins = Math.floor(elapsedSeconds / 60);
+            const secs = elapsedSeconds % 60;
+            const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs} seconds`;
+
+            document.getElementById('complete-stats').innerHTML = `
+                <div class="flex justify-between border-b border-gray-700 pb-1"><span>Mission Type:</span> <span class="neon-text-cyan">-ED Verbs (15 words)</span></div>
+                <div class="flex justify-between border-b border-gray-700 pb-1"><span>Final Score:</span> <span class="neon-text-yellow">${score} PTS</span></div>
+                <div class="flex justify-between border-b border-gray-700 pb-1"><span>Mission Time:</span> <span class="text-white">${timeStr}</span></div>
+                <div class="flex justify-between"><span>Retries:</span> <span class="neon-text-pink">${mistakesCount}</span></div>
+            `;
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            requestAnimationFrame(globalAnimLoop);
+        };
+    </script>
+</body>
+</html>
